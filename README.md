@@ -7,7 +7,7 @@ This project automates the provisioning of two Ubuntu-based servers, named 'Mast
 - VirtualBox (or any other supported provider by Vagrant)
 - Ansible
 
-## Setting Up the Environment
+## **Setting Up the Environment**
 1. Execute `vagrant up` to provision the VMs defined in the `Vagrantfile`.
 2. SSH into the Master node: `vagrant ssh Master`.
 3. Execute the bash script to deploy the LAMP stack: `./deploy.sh`.
