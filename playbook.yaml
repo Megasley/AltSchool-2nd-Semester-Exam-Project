@@ -1,0 +1,21 @@
+---
+- name: Deploy LAMP App
+  hosts: all
+  become: yes
+
+  tasks:
+    - name: Copy deployment script to slave node
+      copy:
+        src: /home/vagrant/deploy.sh
+        dest: deploy.sh
+        mode: "0755"
+
+    - name: Execute deployment script on slave node
+      command: "/home/vagrant/deploy.sh"
+
+    - name: Add cron job to check uptime
+      cron:
+        name: "Check Server Uptime"
+        minute: 0
+        hour: 0
+        job: "uptime >> /var/log/server_uptime.log"

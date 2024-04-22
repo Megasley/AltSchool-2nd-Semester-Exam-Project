@@ -1,0 +1,119 @@
+#!/bin/bash
+
+# Update and upgrade packages
+sudo apt update
+sudo apt upgrade -y
+
+# Add PHP repository and install PHP 8.2
+sudo add-apt-repository -y ppa:ondrej/php
+
+sudo apt install php8.2 -y
+
+# Install PHP extensions
+sudo apt install php8.2-curl php8.2-dom php8.2-mbstring php8.2-xml php8.2-mysql zip unzip -y
+
+# Install Apache
+sudo apt install apache2 -y
+
+# Enable Apache modules
+sudo a2enmod rewrite
+
+# Restart Apache
+sudo systemctl restart apache2
+
+# Install Composer
+cd /usr/bin
+sudo curl -sS https://getcomposer.org/installer | sudo php
+
+sudo mv composer.phar composer
+
+# Clone Laravel repository
+cd ~
+cd /var/www
+sudo git clone https://github.com/laravel/laravel
+
+# Navigate to Laravel directory
+cd laravel/
+
+# Install dependencies
+yes | sudo composer install --optimize-autoloader --no-dev
+
+
+# Change ownership of directories
+sudo chown -R www-data storage
+sudo chown -R www-data bootstrap/cache
+
+# Configure Apache virtual host
+sudo tee /etc/apache2/sites-available/laravel.conf > /dev/null <<EOF
+<VirtualHost *:80>
+    ServerName localhost
+    DocumentRoot /var/www/laravel/public
+
+    <Directory /var/www/laravel/public>
+        Options Indexes FollowSymLinks
+        AllowOverride All
+        Require all granted
+    </Directory>
+
+    ErrorLog \${APACHE_LOG_DIR}/laravel-error.log
+    CustomLog \${APACHE_LOG_DIR}/laravel-access.log combined
+</VirtualHost>
+EOF
+
+# Enable the new virtual host
+sudo a2ensite laravel.conf
+
+sudo a2dissite 000-default.conf
+
+# Restart Apache
+sudo systemctl restart apache2
+
+# Install MariaDB
+sudo apt install mariadb-server -y
+
+# Start MariaDB service
+sudo systemctl start mysql
+
+# Secure MariaDB installation
+sudo mysql_secure_installation <<EOF
+echo ""
+N
+Y
+Y
+Y
+Y
+EOF
+
+# Log in to MariaDB
+sudo mysql <<EOF
+CREATE DATABASE laravel;
+CREATE USER 'phpAdmin'@'localhost' IDENTIFIED BY 'laravel';
+GRANT ALL PRIVILEGES ON laravel.* TO 'phpAdmin'@'localhost';
+FLUSH PRIVILEGES;
+exit
+EOF
+
+# Configure Laravel .env file
+# Set environment variables for Laravel
+echo 'APP_NAME=Laravel' | sudo tee -a /var/www/laravel/.env
+echo 'APP_ENV=local' | sudo tee -a /var/www/laravel/.env
+echo 'APP_KEY=' | sudo tee -a /var/www/laravel/.env
+echo 'APP_DEBUG=true' | sudo tee -a /var/www/laravel/.env
+echo 'APP_URL=localhost' | sudo tee -a /var/www/laravel/.env
+echo '' | sudo tee -a /var/www/laravel/.env
+echo 'DB_CONNECTION=mysql' | sudo tee -a /var/www/laravel/.env
+echo 'DB_HOST=127.0.0.1' | sudo tee -a /var/www/laravel/.env
+echo 'DB_PORT=3306' | sudo tee -a /var/www/laravel/.env
+echo 'DB_DATABASE=laravel' | sudo tee -a /var/www/laravel/.env
+echo 'DB_USERNAME=phpAdmin' | sudo tee -a /var/www/laravel/.env
+echo "DB_PASSWORD=laravel" | sudo tee -a /var/www/laravel/.env
+
+
+sudo php artisan key:generate
+
+# Run Laravel migrations
+sudo php artisan migrate
+
+# Restart Apache
+sudo systemctl restart apache2
+
